@@ -1,5 +1,3 @@
-# echo-earth-nasa-space-apps-2026
-ECHO EARTH | NASA Space Apps 2026 — Explainable Earth-system trend analysis and experimental AI-assisted disaster-risk intelligence using NASA open data.
 🌍 ECHO EARTH
 From Hidden Earth Trends to Actionable Disaster Intelligence
 NASA International Space Apps Challenge 2026  
@@ -87,7 +85,5 @@ NASA Earthdata
 NASA GLDAS dataset catalogue
 See `docs/data-sources.md` for intended data usage and cautions.
 Team
-[YOUR TEAM NAME] — NASA Space Apps Challenge 2026, Dhaka.  
-Team members: [add member names and GitHub profiles].
-License
-An open-source license should be selected with agreement from all contributors before release (e.g., MIT). Data and third-party assets retain their respective license and citation requirements.
+MIST-DREAMERS — NASA Space Apps Challenge 2026, Dhaka.  
+
