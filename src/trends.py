@@ -25,7 +25,7 @@ class Trend:
 def analyze(annual):
     valid = annual.loc[annual.included].sort_values("year")
     x = valid.year.to_numpy(dtype=float)
-    y = valid.mean_temperature_c.to_numpy(dtype=float)
+    y = valid["annual_mean" if "annual_mean" in valid else "mean_temperature_c"].to_numpy(dtype=float)
     if len(y) < 10:
         raise ValueError("At least 10 accepted complete calendar years are needed; select a longer period.")
     if not np.isfinite(y).all() or len(set(x)) != len(x):
@@ -48,11 +48,11 @@ def analyze(annual):
                  lag1, len(a))
 
 
-def explanation(result):
+def explanation(result, variable="temperature", units="°C"):
     evidence = "evidence of a monotonic trend" if result.p < .05 else "insufficient evidence of a monotonic trend"
-    return (f"The estimated annual-mean temperature trend is {result.direction}: "
-            f"{result.slope:+.4f} °C/year ({result.slope * 10:+.3f} °C/decade). "
-            f"The 95% slope confidence interval is {result.low:+.4f} to {result.high:+.4f} °C/year. "
+    return (f"The estimated annual-mean {variable} trend is {result.direction}: "
+            f"{result.slope:+.4f} {units}/year ({result.slope * 10:+.3f} {units}/decade). "
+            f"The 95% slope confidence interval is {result.low:+.4f} to {result.high:+.4f} {units}/year. "
             f"Across {result.n} accepted years, the unadjusted Mann–Kendall p-value is {result.p:.4g}: "
             f"{evidence} at α = 0.05 under the test assumptions. "
             "Statistical significance does not establish causation or predict a flood.")

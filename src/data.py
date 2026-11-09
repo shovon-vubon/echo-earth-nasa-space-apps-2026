@@ -17,12 +17,13 @@ class DataError(ValueError):
     """An unavailable or invalid source must not produce scientific results."""
 
 
-def parse_power(payload, start, end):
+def parse_power(payload, start, end, parameter="T2M"):
     try:
-        values = payload["properties"]["parameter"]["T2M"]
-        units = payload["parameters"]["T2M"]["units"]
+        values = payload["properties"]["parameter"][parameter]
+        units = payload["parameters"][parameter]["units"]
         fill = float(payload["header"]["fill_value"])
-        if units.upper() not in {"C", "°C", "DEG C"}:
+        allowed = {"MM/DAY"} if parameter == "PRECTOTCORR" else {"C", "°C", "DEG C"}
+        if units.upper() not in allowed:
             raise DataError(f"Unexpected NASA temperature units: {units}")
         series = pd.Series(values, dtype="float64")
         series.index = pd.to_datetime(series.index, format="%Y%m%d", errors="raise")
@@ -38,13 +39,15 @@ def parse_power(payload, start, end):
         raise DataError(f"NASA response could not be validated: {exc}") from exc
 
 
-def retrieve(latitude, longitude, start, end):
+def retrieve(latitude, longitude, start, end, parameter="T2M"):
+    if parameter not in {"T2M", "TS", "PRECTOTCORR"}:
+        raise DataError("Unsupported POWER parameter.")
     if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
         raise DataError("Coordinates are outside valid latitude/longitude bounds.")
     start, end = pd.Timestamp(start), pd.Timestamp(end)
     if start > end or start < pd.Timestamp("1981-01-01"):
         raise DataError("Choose ordered dates on or after 1981-01-01.")
-    params = dict(parameters="T2M", community="AG", latitude=latitude,
+    params = dict(parameters=parameter, community="AG", latitude=latitude,
                   longitude=longitude, start=start.strftime("%Y%m%d"),
                   end=end.strftime("%Y%m%d"), format="JSON", **{"time-standard": "UTC"})
     try:
@@ -53,10 +56,10 @@ def retrieve(latitude, longitude, start, end):
         payload = response.json()
     except (requests.RequestException, ValueError) as exc:
         raise DataError(f"NASA POWER is unavailable or rejected this request. Retry later. Details: {exc}") from exc
-    daily = parse_power(payload, start, end)
+    daily = parse_power(payload, start, end, parameter)
     provenance = {
-        "source": NASA_LABEL, "variable": "T2M: daily mean air temperature at 2 metres",
-        "units": "°C", "request_url": response.url,
+        "source": NASA_LABEL, "variable": parameter + ": " + payload["parameters"][parameter]["longname"],
+        "units": payload["parameters"][parameter]["units"], "request_url": response.url,
         "retrieved_utc": datetime.now(timezone.utc).isoformat(),
         "response_sha256": hashlib.sha256(response.content).hexdigest(),
         "latitude": latitude, "longitude": longitude,
@@ -64,7 +67,7 @@ def retrieve(latitude, longitude, start, end):
         "temporal_resolution": "Daily, UTC; aggregated locally to calendar-year means",
         "coverage": "Global; POWER daily meteorology from 1981 to near real time; recent values may be revised",
         "documentation": DOCS, "header": payload.get("header", {}),
-        "parameter_metadata": payload.get("parameters", {}).get("T2M", {}),
+        "parameter_metadata": payload.get("parameters", {}).get(parameter, {}),
         "geometry_returned_by_api": payload.get("geometry", {}),
     }
     return daily, provenance, payload
