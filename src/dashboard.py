@@ -70,6 +70,8 @@ def run():
     st.title("ECHO EARTH")
     st.write("See what changed. Understand the evidence.")
     st.caption("MIST-DREAMERS | Earth System Trend Detective | Historical analysis")
+    if st.session_state.pop("hide_globe_next", False):
+        st.session_state.show_globe = False
     if "pending_location" in st.session_state:
         st.session_state.location = st.session_state.pop("pending_location")
     with st.sidebar:
