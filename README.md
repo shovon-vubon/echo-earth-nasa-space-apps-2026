@@ -1,89 +1,68 @@
-🌍 ECHO EARTH
-From Hidden Earth Trends to Actionable Disaster Intelligence
-NASA International Space Apps Challenge 2026  
-Challenge: Be An Earth System Trend Detective!  
-Local event: Dhaka, Bangladesh  
-Project status: Concept / early development
-> **ECHO EARTH** is a proposed explainable Earth-intelligence platform that examines how temperature, precipitation, vegetation, and wind speed change across time and location using NASA open data. It aims to connect rigorous environmental trend analysis with a carefully validated, experimental flood-risk intelligence module.
-The problem
-Environmental changes are not uniform: a variable can increase in one region and decrease in another. Maps and time-series charts alone do not tell us whether a change is statistically meaningful or what its practical implications might be. Meanwhile, near-term disasters require different evidence than long-term climate trends.
-Our proposed solution
-ECHO EARTH brings together two complementary research components:
-Earth Trend Intelligence: Identify what is changing, where, how much, and whether the trend is statistically significant.
-Experimental Hazard Intelligence: Explore how recent observations, forecasts, terrain, and rigorously tested machine-learning methods could support flood-related risk assessment, without confusing climate trends with short-term prediction.
-The initial geographic focus is Bangladesh, with a future path toward wider regional applications.
-Core environmental variables
-Variable	Proposed NASA data	Analysis goal
-🌡️ Temperature	MERRA-2 near-surface air temperature	Long-term temperature trends
-🌧️ Precipitation	GPM IMERG V07	Rainfall trends, anomalies, regional contrasts
-🌿 Vegetation	MODIS MOD13C2 V6.1 NDVI	Greening/browning patterns
-💨 Wind speed	MERRA-2 near-surface wind components	Wind-speed change over time
-💧 Soil moisture (optional)	GLDAS-2.1 or SMAP	Wetness context for environmental and hazard analysis
-Proposed common historical analysis period: 2001–2024, subject to coverage and quality screening.
-What makes ECHO EARTH different?
-Earth Hazard Signature (proposed)
-An explainable evidence framework connecting climate memory, current environmental signals, forecast hazard context, and local exposure. This is a proposed design concept—not an established scientific index or a demonstrated prediction model.
-Disaster Rewind
-An investigation mode that revisits a documented historical event using only the data that would have been available before the event. It then compares a model's historical estimates, where available and validated, with what actually occurred. The approach is designed to make both successful and unsuccessful predictions visible.
-Opposite-Trend Discovery
-Find regional pairs where a NASA-observed variable exhibits contrasting trends, while showing effect sizes, test assumptions, uncertainty, and data provenance.
-Scientific approach (planned)
-Quality-control and spatially harmonize NASA datasets.
-Estimate trend magnitude using Theil–Sen slopes or another appropriate estimator.
-Assess monotonic trends with suitable Mann–Kendall methods, accounting for seasonality and serial correlation when needed.
-Consider multiple-testing corrections for spatial trend maps.
-Compare environmental-variable anomalies without making unsupported causal claims.
-For any flood-risk model, use time-ordered evaluation, independent historical event labels, probability calibration, and comparisons with simpler baselines.
-Planned architecture
-```text
-NASA Earth data ──> Quality control and harmonization
-                             │
-                             ▼
-                   Earth Trend Intelligence
-                             │
-Recent observations + forecasts + terrain ──> Experimental Hazard Intelligence
-                             │
-                             ▼
-                    Evidence & explanation
-                             │
-                             ▼
-                 Interactive ECHO EARTH app
+﻿# ECHO EARTH
+
+Historical Earth trends with traceable evidence. MIST-DREAMERS, Dhaka.
+Built for the proposed NASA Space Apps challenge workflow, "Be an Earth System Trend Detective."
+
+## First working release
+
+A Python + Streamlit dashboard retrieves real NASA POWER daily **T2M (air temperature at 2 metres)**, screens data completeness, and analyzes annual means with Mann-Kendall and Theil-Sen. No private credentials or paid AI service is needed. The original project proposal is preserved in [docs/original-proposal.md](docs/original-proposal.md); its multi-variable and hazard roadmap is not a claim of implemented functionality.
+
+## Setup and run
+
+Python 3.11 or newer recommended. From the repository root, on Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m streamlit run app.py
 ```
-Planned stack
-Python, Xarray, Pandas, GeoPandas, SciPy, Streamlit, Plotly; potentially XGBoost/LightGBM for an experimental flood-risk module after training data and baselines have been validated.
-Development milestones
-[ ] Select the first Bangladesh study regions and verify data access.
-[ ] Prepare and document the four NASA datasets.
-[ ] Implement and test long-term trend estimation.
-[ ] Create trend maps, time series, and region comparisons.
-[ ] Build an evidence-inspection interface.
-[ ] Select a documented flood case and prepare a leakage-free retrospective investigation.
-[ ] Evaluate a flood-risk baseline and only then consider a machine-learning alternative.
-[ ] Publish the demo, reproducibility instructions, and a short project video.
-Repository layout
+
+On macOS/Linux use `.venv/bin/python` instead. Open http://localhost:8501. Internet access to NASA POWER is required for real data. Choose a location, temperature, and dates, then **Analyze**. Default: Mirpur/Dhaka, 2001-2024. At least 10 accepted calendar years are required; 20+ are preferable. Dates are limited to past calendar years. Changing a selection clears the previous result until Analyze is pressed again.
+
+NASA requests are cached in memory for 24 hours (maximum 32 selections). Source errors are displayed; there is no automatic fallback or invented NASA result. Download daily and annual CSVs, analysis/provenance JSON, and the original NASA response. The provenance records retrieval time, request URL, response hash, API metadata and processing choices.
+
+## Demo Mode
+
+Explicitly enable **Demo Mode (synthetic)** and click Analyze. Every synthetic result and chart is labeled **Illustrative synthetic data - not NASA observations**; CSV rows carry that source label and filenames start with `synthetic`. Fixed-seed data demonstrate controls and methods only, have no spatial meaning, and are not cached NASA data. Turn Demo Mode off and Analyze to retrieve real values.
+
+## Science and scope
+
+- [Data sources](docs/data-sources.md): verified NASA documentation, variable, units, coverage and access.
+- [Methods](docs/methodology.md): completeness screens, annual aggregation, formulas, assumptions and limitations.
+- One working variable: temperature. No precipitation, NDVI or wind retrieval is implemented.
+- Location selection is a grid-scale point request, not a basin average or local sensor.
+- Ask Earth accepts four explicit result-grounded questions, displayed in the app. Unsupported questions are rejected; no LLM is involved.
+- Flood Hazard is an **unimplemented experimental area**. It contains requirements, no probabilities, warnings or 24/48/72-hour predictions.
+- Mirpur urban waterlogging is the storytelling context. A Sylhet selection is a separate grid location, not evidence about Mirpur and not a validated Sylhet flood study.
+- This student project is not an official NASA warning service or NASA endorsement.
+
+## Structure
+
 ```text
-README.md                Project overview
-.gitignore               Ignore local data, cache, secrets, and model artifacts
-docs/
-  data-sources.md        Dataset links, units, and preprocessing considerations
-  methodology.md         Scientific methods, testing, and uncertainty
-  roadmap.md             Scope, milestones, and deliverables
-data/README.md           Data handling and download instructions
-src/                     Application and analysis source code (forthcoming)
-tests/                   Automated tests (forthcoming)
-assets/                  Original and properly credited visual assets
+app.py                     Streamlit interface and cache boundary
+src/data.py                NASA access, response validation, explicit synthetic mode
+src/preprocessing.py       Daily completeness and calendar-year aggregation
+src/trends.py              Mann-Kendall, Theil-Sen, residual correlation diagnostic
+src/questions.py           Supported result-grounded questions
+scripts/smoke_nasa.py       Opt-in real NASA integration check
+tests/                    Scientific and Streamlit interaction tests
+docs/                      Source/method records and original proposal
 ```
-Current status & responsible-use notice
-⚠️ Concept-stage project: Screenshots, diagrams, and interface mockups should be labeled as concepts until backed by actual processed NASA data. No operational disaster-warning system or validated flood forecast is currently claimed. Do not use the project as an emergency alert service; consult official forecasting and emergency-management agencies for real warnings.
-NASA data and tools are used for the competition challenge; this student project is not an official NASA warning product or an endorsement by NASA.
-References and data credits
-NASA Space Apps Challenge 2026
-NASA GPM IMERG
-NASA MERRA-2
-NASA LP DAAC — MODIS vegetation products
-NASA Earthdata
-NASA GLDAS dataset catalogue
-See `docs/data-sources.md` for intended data usage and cautions.
-Team
-MIST-DREAMERS — NASA Space Apps Challenge 2026, Dhaka.  
+
+## Verification
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe scripts/smoke_nasa.py
+```
+
+The first command runs offline tests. The second makes a live NASA request and saves its original JSON, processed annual CSV and provenance to ignored `data/cache/`; failures are not replaced with fixtures. Dependencies use bounded versions in requirements.txt; this is not a fully locked environment.
+
+## Future hazard work
+
+Require current-condition inputs, issue-time forecasts, terrain/rivers/exposure, verified timestamped flood-event labels and a trained, independently validated model. Use time- and event-separated evaluation, leakage controls, calibration, PR-AUC/Brier scores, baseline comparison and external validation. Test whether adding long-term trends improves the baseline. Until this evidence exists, the interface must not show a real probability or forecast.
+
+No secrets are required. `.env`, Streamlit secrets, virtual environments and local retrieval caches are ignored by Git. Do not put credentials in code or exports.
+
+If Windows blocks Arrow's native table library, the app automatically displays escaped, scrollable HTML tables instead. Charts, calculations and CSV downloads still work; no security-policy changes are needed.
 

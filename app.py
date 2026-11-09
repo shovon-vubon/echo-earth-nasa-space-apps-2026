@@ -28,6 +28,16 @@ def cached_retrieve(lat, lon, start, end):
     return retrieve(lat, lon, start, end)
 
 
+def show_table(frame, height=None):
+    """Keep data inspectable on hosts that cannot load Arrow's native library."""
+    try:
+        st.dataframe(frame, hide_index=True, width="stretch", **({"height": height} if height else {}))
+    except ImportError:
+        st.caption("Basic accessible table view (interactive table library unavailable).")
+        st.html('<div style="overflow-x:auto;max-height:420px;overflow-y:auto" tabindex="0" aria-label="Data table">'
+                + frame.to_html(index=False, escape=True, na_rep="Missing", border=0) + '</div>')
+
+
 with st.sidebar:
     st.header("Choose your analysis")
     location = st.selectbox("Location", list(LOCATIONS))
@@ -44,7 +54,7 @@ with st.sidebar:
     demo = st.checkbox("Demo Mode (synthetic)", value=False)
     if demo:
         st.warning(DEMO_LABEL)
-    submitted = st.button("Analyze", type="primary", use_container_width=True)
+    submitted = st.button("Analyze", type="primary", width="stretch")
     st.caption("NASA requests are cached for 24 hours. No API key is required.")
 
 selection = (location, lat, lon, start, end, demo)
@@ -112,7 +122,7 @@ with trend_tab:
         fig.update_layout(title=f"Annual mean temperature · {label}", xaxis_title="Calendar year (UTC)",
                           yaxis_title="Air temperature at 2 metres (°C)", legend=dict(orientation="h"),
                           margin=dict(l=20, r=20, t=70, b=20))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
         st.caption("The table below provides the chart values for keyboard and screen-reader access. A slope interval is not a prediction interval.")
 
         with st.expander("Data, methods, limitations & provenance", expanded=True):
@@ -129,8 +139,9 @@ with trend_tab:
             st.json(provenance)
         with st.expander("View and download processed data", expanded=True):
             st.caption(label)
-            st.dataframe(annual, hide_index=True, use_container_width=True)
-            st.dataframe(daily, hide_index=True, use_container_width=True, height=220)
+            show_table(annual)
+            preview_year = st.selectbox("Daily data preview year", sorted(daily.date.dt.year.unique()))
+            show_table(daily.loc[daily.date.dt.year == preview_year], height=220)
             prefix = "synthetic" if demo else "nasa_power"
             exported_daily = daily.assign(source=label, latitude=lat, longitude=lon)
             exported_annual = annual.assign(source=label, latitude=lat, longitude=lon)
