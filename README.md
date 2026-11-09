@@ -32,7 +32,7 @@ Surface temperature is primary. It uses NASA POWER **TS (Earth Skin Temperature)
 | Vegetation | MODIS MOD13Q1 via NASA ORNL DAAC | NDVI, 16-day composites, nominal 250 m |
 | Air temperature | POWER / MERRA-2 T2M | Celsius, daily |
 
-POWER native meteorology resolution is 0.5 degrees latitude by 0.625 degrees longitude. Multi-year MODIS requests are batched ten dates at a time and can take several minutes. Requests are cached for 24 hours; source failures never become synthetic results. MODIS source metadata, pixel reliability and API requests are retained.
+POWER native meteorology resolution is 0.5 degrees latitude by 0.625 degrees longitude. Multi-year MODIS requests are batched ten dates at a time and can take several minutes. Requests are cached for 24 hours; MODIS public responses are also cached under ignored `data/cache/modis/` so retries can reuse successful batches. Network failures receive at most three attempts. Source failures never become synthetic results. MODIS source metadata, pixel reliability and API requests are retained.
 
 ## Upload new data without coding
 

@@ -1,6 +1,9 @@
 """NASA ORNL DAAC MODIS single-pixel NDVI with explicit QA and batch provenance."""
 from datetime import datetime, timezone
 import hashlib
+import json
+import time
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import requests
@@ -12,10 +15,36 @@ QUALITY = "250m_16_days_pixel_reliability"
 
 
 def get_json(path, params=None):
+    url = requests.Request("GET", BASE + path, params=params).prepare().url
+    cache = Path(__file__).resolve().parents[1] / "data" / "cache" / "modis"
+    key = hashlib.sha256(url.encode()).hexdigest()
+    file = cache / (key + ".json")
+    if file.exists() and time.time() - file.stat().st_mtime < 86400:
+        try:
+            stored = json.loads(file.read_text(encoding="utf-8"))
+            return stored["payload"], stored["request"]
+        except (ValueError, KeyError, OSError):
+            pass
     try:
-        r = requests.get(BASE + path, params=params, headers={"Accept": "application/json"}, timeout=(10, 90))
-        r.raise_for_status()
-        return r.json(), {"url": r.url, "sha256": hashlib.sha256(r.content).hexdigest()}
+        for attempt in range(3):
+            try:
+                r = requests.get(url, headers={"Accept": "application/json"}, timeout=(10, 45))
+                r.raise_for_status()
+                break
+            except requests.RequestException:
+                if attempt == 2:
+                    raise
+                time.sleep(1 + attempt)
+        payload = r.json()
+        request = {"url": r.url, "sha256": hashlib.sha256(r.content).hexdigest(),
+                   "retrieved_utc": datetime.now(timezone.utc).isoformat()}
+        # Only public API responses; uploads are never persisted here.
+        try:
+            cache.mkdir(parents=True, exist_ok=True)
+            file.write_text(json.dumps(dict(payload=payload,request=request)), encoding="utf-8")
+        except OSError:
+            pass  # A read-only deployment can still analyze live responses.
+        return payload, request
     except (requests.RequestException, ValueError) as exc:
         raise DataError(f"NASA ORNL vegetation service unavailable: {exc}") from exc
 

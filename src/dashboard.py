@@ -16,7 +16,12 @@ from src.maps import LOCATIONS, globe_html, region_map
 @st.cache_data(ttl=86400, max_entries=32, show_spinner=False)
 def nasa_data(lat, lon, start, end, code):
     if code == "NDVI":
-        return retrieve_ndvi(lat, lon, start, end)
+        progress = st.progress(0., text="Loading MODIS metadata and quality-screened composites…")
+        try:
+            return retrieve_ndvi(lat, lon, start, end,
+                progress=lambda fraction: progress.progress(fraction, text=f"MODIS composites retrieved: {fraction:.0%}"))
+        finally:
+            progress.empty()
     frame, provenance, raw = retrieve(lat, lon, start, end, code)
     return frame.rename(columns={"temperature_c": "value"}), provenance, raw
 
@@ -35,7 +40,7 @@ def show_table(frame):
                 frame.to_html(index=False, escape=True, na_rep="Missing", border=0) + '</div>')
 
 
-def upload_wizard(spec):
+def upload_wizard(spec, variable):
     st.subheader("Bring your data")
     st.write("Upload one location and variable, map the columns, then analyze. No coding or model training needed.")
     st.caption("CSV up to 10 MB / 100,000 rows. NetCDF, GeoTIFF and HDF require dataset-specific conversion.")
@@ -60,6 +65,9 @@ def upload_wizard(spec):
     place = st.text_input("Location represented by this file")
     resolution = st.text_input("Spatial resolution (or station / unknown)", "unknown")
     confirmed = st.checkbox("I confirm one location and quality-screened values in the selected units and frequency.")
+    preview = prepare_upload(frame, dc, vc, frequency, variable, units, missing, fmt)
+    st.success(f"Validated {len(preview):,} time periods: {preview.value.count():,} numeric values; {preview.value.isna().sum():,} missing. File coverage: {preview.date.min():%Y-%m-%d} to {preview.date.max():%Y-%m-%d}.")
+    st.caption("The sidebar dates determine the analysis window. Select complete calendar years within this file's coverage. Values outside that window are not fitted.")
     return dict(content=content, filename=file.name, frame=frame, dc=dc, vc=vc, units=units,
                 frequency=frequency, fmt=fmt, missing=missing, source=source, place=place,
                 resolution=resolution, confirmed=confirmed)
@@ -93,7 +101,10 @@ def run():
     if show_globe:
         left, right = st.columns([3,2])
         with left:
-            components.html(globe(), height=430)
+            if hasattr(st, "iframe"):
+                st.iframe(globe(), height=430, alt="Rotating Earth globe with Bangladesh marker")
+            else:
+                components.html(globe(), height=430)
         with right:
             st.subheader("One planet. Many changing patterns.")
             st.write("Start in Bangladesh. Switch between surface temperature, precipitation and vegetation, then inspect the evidence behind each trend.")
@@ -105,6 +116,8 @@ def run():
             st.caption("Globe boundaries need internet access. The location selector also works without the globe. Global country drill-down and polygon averages are future work.")
     st.subheader(variable)
     st.write(spec["note"])
+    if spec["code"] == "NDVI" and mode == "NASA online":
+        st.info("MODIS retrieval is slower than POWER and can time out at NASA. Successful batches are retained for retry. You can also upload quality-screened NDVI CSV data.")
     with st.expander("Bangladesh location map", expanded=st.query_params.get("view") == "bangladesh"):
         event = st.plotly_chart(region_map(location,lat,lon), key=f"map_{location}_{lat}_{lon}", on_select="rerun", width="stretch")
         points = event.selection.points
@@ -115,7 +128,7 @@ def run():
     settings = None
     if mode == "Upload CSV":
         try:
-            settings = upload_wizard(spec)
+            settings = upload_wizard(spec, variable)
         except DataError as exc:
             st.error(str(exc))
     signature = repr((variable,mode,location,lat,lon,start,end,

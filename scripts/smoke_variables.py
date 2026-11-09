@@ -12,6 +12,7 @@ folder.mkdir(parents=True,exist_ok=True)
 for code in ["TS","PRECTOTCORR","NDVI"]:
     start,end="2010-01-01","2024-12-31"
     if code == "NDVI":
+        start="2015-01-01"
         frame,provenance,raw=retrieve_ndvi(23.8223,90.3654,start,end,
             progress=lambda v: print(f"MODIS retrieval {v:.0%}",flush=True))
         cadence="16-day"

@@ -2,6 +2,7 @@
 import hashlib
 import io
 import calendar
+from datetime import date, timedelta
 import numpy as np
 import pandas as pd
 from src.data import DataError
@@ -77,7 +78,7 @@ def aggregate(frame, start, end, frequency="Daily"):
     elif frequency == "Annual":
         expected = pd.date_range(f"{start.year}-01-01", f"{end.year}-01-01", freq="YS")
     else:
-        expected = pd.DatetimeIndex([pd.Timestamp(y, 1, 1) + pd.Timedelta(days=d)
+        expected = pd.DatetimeIndex([date(y, 1, 1) + timedelta(days=d)
                                     for y in range(start.year, end.year + 1) for d in range(0, 365, 16)])
         expected = expected[(expected >= start) & (expected <= end)]
     data = frame.set_index("date")["value"].reindex(expected)
