@@ -69,4 +69,4 @@ def test_globe_navigation():
     app=launch()
     next(b for b in app.button if b.label=="Explore Bangladesh").click().run()
     assert not app.exception
-    assert app.query_params["view"]==["bangladesh"]
+    assert app.query_params["view"]=="bangladesh"

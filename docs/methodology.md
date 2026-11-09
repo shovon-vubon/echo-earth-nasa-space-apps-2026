@@ -1,4 +1,16 @@
-# Trend method, version 1.0
+# Trend method, version 2.0
+
+## Additional workflows in version 2.0
+
+The dashboard uses `src/workflows.py` for generalized annual means. Daily data follow the screening rules below. Precipitation results are **annual mean daily precipitation rate (mm/day)**; slope units `(mm/day)/year` measure change in that rate, not annual precipitation totals. Surface and air temperature remain separate variables.
+
+CSV uploads support daily, monthly and annual series with explicit units and date formats. Duplicate periods and invalid dates are rejected. Nonnumeric/nonfinite values and a declared fill marker become missing; out-of-range finite values trigger an error. Kelvin is converted to Celsius. Monthly observations must already be means, with all twelve required and weighted equally. Annual observations are accepted as supplied: completeness measures available annual records, not unobserved daily coverage. Upload provenance and quality are not independently verified. There is no model-training step.
+
+MOD13Q1 composites occur at day-of-year 1,17,…,353 (23 per year). Use one pixel with reliability rank 0 or 1, scale valid NDVI and leave excluded observations missing. Require at least 18 composites and at least three in each calendar quarter. Annual NDVI is the equally weighted average of accepted composites, not a duration-weighted daily estimate. These are project screening choices, not official MODIS acceptance thresholds. Marginal-quality observations and residual seasonal/cloud sampling bias remain limitations. Partial requested calendar years are excluded for every cadence.
+
+Ask Earth invokes the same `analyze` function for supported trend/slope questions; completeness and source answers use the selected input and provenance. It does not generate causal explanations or forecasts.
+
+## Core daily method (retained from version 1.0)
 
 ## Preprocessing
 

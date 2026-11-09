@@ -1,15 +1,10 @@
 ﻿# ECHO EARTH
 
-Historical Earth trends with traceable evidence. MIST-DREAMERS, Dhaka.
-Built for the proposed NASA Space Apps challenge workflow, "Be an Earth System Trend Detective."
+See what changed. Understand the evidence. A trend-focused Python + Streamlit app by MIST-DREAMERS.
 
-## First working release
+## Run
 
-A Python + Streamlit dashboard retrieves real NASA POWER daily **T2M (air temperature at 2 metres)**, screens data completeness, and analyzes annual means with Mann-Kendall and Theil-Sen. No private credentials or paid AI service is needed. The original project proposal is preserved in [docs/original-proposal.md](docs/original-proposal.md); its multi-variable and hazard roadmap is not a claim of implemented functionality.
-
-## Setup and run
-
-Python 3.11 or newer recommended. From the repository root, on Windows PowerShell:
+Python 3.11+ recommended. From the project root on Windows:
 
 ```powershell
 python -m venv .venv
@@ -17,52 +12,69 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
-On macOS/Linux use `.venv/bin/python` instead. Open http://localhost:8501. Internet access to NASA POWER is required for real data. Choose a location, temperature, and dates, then **Analyze**. Default: Mirpur/Dhaka, 2001-2024. At least 10 accepted calendar years are required; 20+ are preferable. Dates are limited to past calendar years. Changing a selection clears the previous result until Analyze is pressed again.
+Open http://localhost:8501. On macOS/Linux substitute `.venv/bin/python`.
+No credentials or paid language-model service are required.
 
-NASA requests are cached in memory for 24 hours (maximum 32 selections). Source errors are displayed; there is no automatic fallback or invented NASA result. Download daily and annual CSVs, analysis/provenance JSON, and the original NASA response. The provenance records retrieval time, request URL, response hash, API metadata and processing choices.
+## Explore
 
-## Demo Mode
+1. Start with the rotating globe; click the Bangladesh marker or **Explore Bangladesh**. Dragging stops rotation; reduced-motion preferences disable it.
+2. Choose a city marker or the accessible Location selector. The map centres on the selected location. Custom coordinates also work. These are point/grid selections, not district or basin averages.
+3. Switch **Surface temperature / Rainfall / Vegetation / Air temperature** in the sidebar.
+4. Choose dates and **Analyze**. At least 10 accepted years are required; prefer 20+.
+5. Inspect the chart, calculations, exclusions, uncertainty and provenance. Download the processed/source CSVs and analysis/source JSON.
 
-Explicitly enable **Demo Mode (synthetic)** and click Analyze. Every synthetic result and chart is labeled **Illustrative synthetic data - not NASA observations**; CSV rows carry that source label and filenames start with `synthetic`. Fixed-seed data demonstrate controls and methods only, have no spatial meaning, and are not cached NASA data. Turn Demo Mode off and Analyze to retrieve real values.
+Surface temperature is primary. It uses NASA POWER **TS (Earth Skin Temperature)** from MERRA-2 reanalysis: a coarse modelled surface temperature over land, not air temperature and not a high-resolution MODIS thermal image. Coastal cells can mix land and water.
 
-## Science and scope
+| Workflow | NASA product | Units / cadence |
+|---|---|---|
+| Surface temperature | POWER / MERRA-2 TS | Celsius, daily |
+| Rainfall / precipitation | POWER / MERRA-2 PRECTOTCORR | mm/day, daily; includes frozen precipitation |
+| Vegetation | MODIS MOD13Q1 via NASA ORNL DAAC | NDVI, 16-day composites, nominal 250 m |
+| Air temperature | POWER / MERRA-2 T2M | Celsius, daily |
 
-- [Data sources](docs/data-sources.md): verified NASA documentation, variable, units, coverage and access.
-- [Methods](docs/methodology.md): completeness screens, annual aggregation, formulas, assumptions and limitations.
-- One working variable: temperature. No precipitation, NDVI or wind retrieval is implemented.
-- Location selection is a grid-scale point request, not a basin average or local sensor.
-- Ask Earth accepts four explicit result-grounded questions, displayed in the app. Unsupported questions are rejected; no LLM is involved.
-- Flood Hazard is an **unimplemented experimental area**. It contains requirements, no probabilities, warnings or 24/48/72-hour predictions.
-- Mirpur urban waterlogging is the storytelling context. A Sylhet selection is a separate grid location, not evidence about Mirpur and not a validated Sylhet flood study.
-- This student project is not an official NASA warning service or NASA endorsement.
+POWER native meteorology resolution is 0.5 degrees latitude by 0.625 degrees longitude. Multi-year MODIS requests are batched ten dates at a time and can take several minutes. Requests are cached for 24 hours; source failures never become synthetic results. MODIS source metadata, pixel reliability and API requests are retained.
 
-## Structure
+## Upload new data without coding
 
-```text
-app.py                     Streamlit interface and cache boundary
-src/data.py                NASA access, response validation, explicit synthetic mode
-src/preprocessing.py       Daily completeness and calendar-year aggregation
-src/trends.py              Mann-Kendall, Theil-Sen, residual correlation diagnostic
-src/questions.py           Supported result-grounded questions
-scripts/smoke_nasa.py       Opt-in real NASA integration check
-tests/                    Scientific and Streamlit interaction tests
-docs/                      Source/method records and original proposal
-```
+Choose **Upload CSV**, preview the file, map date/value columns, choose units and Daily/Monthly/Annual cadence, supply a source and location, and confirm the input definitions. Then Analyze. The same analysis functions run on uploaded data; this is statistical analysis, not model training.
 
-## Verification
+- UTF-8 CSV, maximum 10 MB / 100,000 rows, one variable and location.
+- Supported explicit date formats: YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY, YYYY-MM, YYYY.
+- Celsius or Kelvin temperatures (converted); precipitation in mean mm/day; scaled NDVI in -0.2 to 1.
+- Monthly and annual records must already be period means, not precipitation totals. Quality-screen NDVI first.
+- Numeric missing markers and nonnumeric values become missing; invalid dates, duplicate periods, invalid ranges and missing declarations produce actionable errors.
+- File SHA-256, mapping, units, declared source and location accompany exports. Files remain in the Streamlit process and are not sent to NASA or an AI service. They are not written to the repository by the upload workflow.
+- User-provided files are not automatically certified as NASA observations. HDF, NetCDF, GeoTIFF and automatic polygon aggregation need future dataset-specific adapters.
+
+The CSV layout example is only two illustrative rows; it shows formatting and cannot support a trend test. New competition datasets can be uploaded once converted to these documented columns and units. Release dates/content are not assumed by the app.
+
+## Scientific interpretation
+
+[Methods](docs/methodology.md) and [sources](docs/data-sources.md) document processing and limitations. Daily annual means require 90% annual and 80% monthly completeness. Monthly uploads require 12 values. Annual uploads have unknown within-year completeness. NDVI requires 18 of 23 accepted composites and at least three in each quarter; reliability 0 and 1 are accepted, with marginal-quality limitations disclosed.
+
+Mann-Kendall uses tie-adjusted variance and continuity correction. Theil-Sen uses actual year spacing and reports a 95% slope interval. Annual averaging can hide seasonal changes and extremes. Neither serial dependence nor multiple comparisons is corrected. Statistical significance is not causation; findings are exploratory.
+
+Ask Earth recomputes the selected annual analysis for supported trend/slope questions and shows the function, sample count and source used. Completeness questions count actual valid observations. Unsupported questions are rejected.
+
+**Synthetic demo** is explicit and labeled "Illustrative synthetic data-not NASA observations" throughout. It is never a source-error fallback.
+
+## Scope and roadmap
+
+Forecasting has been removed from the product interface. Future research may assess hazard models only after appropriate data, labels and independent validation exist. Global country drill-down, area/polygon averages, satellite thermal products, seasonal tests and broader upload adapters are future work. Mirpur waterlogging is a story context, not a consequence established by a temperature trend. This is not an official NASA product or endorsement.
+
+## Code and tests
+
+- `app.py`: entry point; `src/dashboard.py`: interface, cache and supported questions.
+- `src/data.py`: POWER access; `src/vegetation.py`: MODIS retrieval and QA.
+- `src/workflows.py`: variable definitions, upload validation and annual aggregation.
+- `src/trends.py`: statistics; `src/maps.py`: globe and location map.
+- `src/preprocessing.py` and `src/questions.py`: retained first-release compatibility helpers.
+- `tests/`: offline science, upload and app-interaction tests.
+- `scripts/smoke_variables.py`: live source verification; writes ignored `data/cache/` evidence.
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\python.exe scripts/smoke_nasa.py
+.\.venv\Scripts\python.exe -X utf8 scripts/smoke_variables.py
 ```
 
-The first command runs offline tests. The second makes a live NASA request and saves its original JSON, processed annual CSV and provenance to ignored `data/cache/`; failures are not replaced with fixtures. Dependencies use bounded versions in requirements.txt; this is not a fully locked environment.
-
-## Future hazard work
-
-Require current-condition inputs, issue-time forecasts, terrain/rivers/exposure, verified timestamped flood-event labels and a trained, independently validated model. Use time- and event-separated evaluation, leakage controls, calibration, PR-AUC/Brier scores, baseline comparison and external validation. Test whether adding long-term trends improves the baseline. Until this evidence exists, the interface must not show a real probability or forecast.
-
-No secrets are required. `.env`, Streamlit secrets, virtual environments and local retrieval caches are ignored by Git. Do not put credentials in code or exports.
-
-If Windows blocks Arrow's native table library, the app automatically displays escaped, scrollable HTML tables instead. Charts, calculations and CSV downloads still work; no security-policy changes are needed.
-
+Globe boundaries and OpenStreetMap tiles require browser internet access. If Arrow's native DLL is blocked, data tables fall back to accessible escaped HTML without weakening Windows security. The original proposal and first-release documentation/code are preserved in `docs/`. Secrets, virtual environments and local data caches are ignored by Git.

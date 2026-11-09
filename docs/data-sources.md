@@ -1,4 +1,23 @@
-# Connected data source
+# Connected data sources
+
+## Trend-focused release (2026-11-10)
+
+The current app adds **TS (Earth Skin Temperature)** and **PRECTOTCORR (Precipitation Corrected)** to the original T2M workflow. All three use the public POWER daily API with UTC days. NASA response metadata verifies TS in C and precipitation in mm/day. TS is reanalysis surface skin temperature, not a high-resolution satellite land-surface-temperature image. Over land it represents the modelled surface; coarse coastal cells can mix surfaces. Precipitation includes liquid and frozen precipitation and is analyzed as annual mean daily rate, not annual totals.
+
+- [NASA POWER annual meteorology: TS definition](https://gis.earthdata.nasa.gov/portal/home/item.html?id=c1673c398f044392b2f4d6a52a201a38)
+- [NASA GMAO variable definitions](https://gmao.gsfc.nasa.gov/pubs/docs/Collow1437.pdf) (native product units differ; the POWER API's returned units govern this app).
+
+Vegetation uses **MODIS MOD13Q1**, nominal 250 m, 16-day NDVI composites, via the NASA ORNL DAAC public REST API. Coverage begins in 2000, with local dates obtained from the service. Product/collection metadata is captured from `/products` rather than silently assuming a version. Band scale factor, offset and fill value are read from `/MOD13Q1/bands`. Public access requires no login.
+
+- [NASA ORNL REST documentation and ten-date request limit](https://modis.ornl.gov/data/modis_webservice.html)
+- [NASA MODIS web-service catalogue](https://data.nasa.gov/dataset/modis-web-service-api)
+- [MODIS product and quality documentation](https://modis.ornl.gov/documentation.html)
+
+Each zero-kilometre subset must return one pixel. Native NDVI integers -2000…10000 are scaled using the returned factor (verified 0.0001). Reliability 0 (good) and 1 (marginal) are accepted; snow/ice, cloud, fill and out-of-range records become missing. Detailed VI quality bits are not decoded, so residual contamination is possible and is disclosed. Actual cell size, raw quality ranks, batch request URLs/hashes and raw responses remain available for inspection. A MODIS pixel and POWER grid cell cover different areas; switching variables does not make them spatially equivalent.
+
+Uploads carry user-declared provenance and never become certified NASA observations just because their filename or source field says NASA. Metadata and QA requirements for unfamiliar files must be established before conversion.
+
+## Original T2M connection (retained)
 
 Documentation reviewed 2026-11-09. Dataset: NASA POWER daily meteorological data, T2M based on NASA GMAO MERRA-2 reanalysis. POWER is the serving product, not a local weather station.
 
