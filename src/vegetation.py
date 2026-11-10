@@ -14,7 +14,7 @@ NDVI = "250m_16_days_NDVI"
 QUALITY = "250m_16_days_pixel_reliability"
 
 
-def get_json(path, params=None):
+def get_json(path, params=None, deadline=None):
     url = requests.Request("GET", BASE + path, params=params).prepare().url
     cache = Path(__file__).resolve().parents[1] / "data" / "cache" / "modis"
     key = hashlib.sha256(url.encode()).hexdigest()
@@ -27,8 +27,11 @@ def get_json(path, params=None):
             pass
     try:
         for attempt in range(3):
+            remaining = 45 if deadline is None else deadline - time.monotonic()
+            if remaining <= 0:
+                raise DataError("MODIS download paused after the request time budget. Successful batches are saved. Click Analyze again to continue from cache; no partial trend was calculated.")
             try:
-                r = requests.get(url, headers={"Accept": "application/json"}, timeout=(10, 45))
+                r = requests.get(url, headers={"Accept": "application/json"}, timeout=(min(10, remaining), min(45, remaining)))
                 r.raise_for_status()
                 break
             except requests.RequestException:
@@ -68,9 +71,10 @@ def parse_subset(payload, scale=.0001, offset=0, fill=-3000):
 
 
 def retrieve_ndvi(lat, lon, start, end, progress=None):
-    dates_payload, dates_request = get_json("/MOD13Q1/dates", {"latitude": lat, "longitude": lon})
-    bands_payload, bands_request = get_json("/MOD13Q1/bands")
-    products, products_request = get_json("/products")
+    deadline = time.monotonic() + 120
+    dates_payload, dates_request = get_json("/MOD13Q1/dates", {"latitude": lat, "longitude": lon}, deadline)
+    bands_payload, bands_request = get_json("/MOD13Q1/bands", deadline=deadline)
+    products, products_request = get_json("/products", deadline=deadline)
     product = next((p for p in products["products"] if p["product"] == "MOD13Q1"), None)
     meta = next(b for b in bands_payload["bands"] if b["band"] == NDVI)
     dates = [d for d in dates_payload["dates"] if str(start) <= d["calendar_date"] <= str(end)]
@@ -80,7 +84,7 @@ def retrieve_ndvi(lat, lon, start, end, progress=None):
     for i in range(0, len(dates), 10):
         chunk = dates[i:i + 10]
         payload, request = get_json("/MOD13Q1/subset", dict(latitude=lat, longitude=lon,
-            startDate=chunk[0]["modis_date"], endDate=chunk[-1]["modis_date"], kmAboveBelow=0, kmLeftRight=0))
+            startDate=chunk[0]["modis_date"], endDate=chunk[-1]["modis_date"], kmAboveBelow=0, kmLeftRight=0), deadline)
         frames.append(parse_subset(payload, float(meta["scale_factor"]), float(meta.get("add_offset", 0)), float(meta["fill_value"])))
         responses.append(payload)
         requests_meta.append(request)

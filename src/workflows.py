@@ -32,6 +32,9 @@ def read_csv(content):
 
 
 def prepare_upload(frame, date_column, value_column, frequency, variable, units, missing, date_format):
+    supported_units = {"Celsius", "Kelvin"} if VARIABLES[variable]["code"] in {"TS", "T2M"} else {VARIABLES[variable]["units"]}
+    if units not in supported_units:
+        raise DataError("Input units do not match the selected variable.")
     if date_column == value_column:
         raise DataError("Choose different date and value columns.")
     try:

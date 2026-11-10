@@ -19,6 +19,8 @@ These p-values do not correct serial correlation or repeated comparisons. The pr
 
 MODIS `/bands`, `/dates`, `/products` and small real `/subset` responses were checked. A real 2015 ten-composite batch returned eight accepted pixels under the documented reliability 0/1 filter. A long-record request encountered a NASA 504 gateway timeout; the retry run also progressed slowly. **A complete multi-year NDVI trend retrieval has not been verified.** The app exposes the adapter with progress, bounded retries, 24-hour public-batch cache, explicit errors, and a CSV alternative. It never produces a trend unless ten annual aggregates pass quality screening. This source-availability limitation is visible in the interface.
 
+The resumed long-record MODIS verification reached 35% (eight ten-date batches) before DNS resolution failed. The canonical host returned in NASA metadata also failed DNS resolution. Successful public responses remain cached. The adapter now limits each invocation with a 120-second request budget checked between attempts; users can repeat Analyze to reuse those batches. No partial long-record trend is returned on failure.
+
 The local Streamlit health endpoint responds `ok`. Browser/native-app inspection was unavailable (no connected browser and native computer-use pipe unavailable), so globe animation, map rendering and pointer interactions have not been manually verified. Their navigation fallback is covered by AppTest; no pixel-perfect browser QA is claimed.
 
 Public-response verification files live under ignored `data/cache/`. The original proposal, first-release README and first-release app source are preserved under `docs/`. No uploaded private file or credential is committed.

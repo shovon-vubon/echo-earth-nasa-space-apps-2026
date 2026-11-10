@@ -117,7 +117,7 @@ def run():
     st.subheader(variable)
     st.write(spec["note"])
     if spec["code"] == "NDVI" and mode == "NASA online":
-        st.info("MODIS retrieval is slower than POWER and can time out at NASA. Successful batches are retained for retry. You can also upload quality-screened NDVI CSV data.")
+        st.info("MODIS retrieval is slower than POWER. Download attempts have a two-minute request budget; successful batches are retained. If paused, click Analyze again to continue from cache. NASA outages produce an error, not a partial trend. You can also upload quality-screened NDVI CSV data.")
     with st.expander("Bangladesh location map", expanded=st.query_params.get("view") == "bangladesh"):
         event = st.plotly_chart(region_map(location,lat,lon), key=f"map_{location}_{lat}_{lon}", on_select="rerun", width="stretch")
         points = event.selection.points
