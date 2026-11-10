@@ -10,25 +10,22 @@ LOCATIONS = {
 
 
 def globe_html():
-    fig = go.Figure(go.Scattergeo(lat=[23.7], lon=[90.35], text=["Explore Bangladesh"],
-                                 mode="markers+text", textposition="top center",
-                                 marker=dict(size=12, color="#56E0C4"), textfont=dict(color="white")))
-    fig.update_geos(projection_type="orthographic", projection_rotation=dict(lon=70, lat=15),
-                    showland=True, landcolor="#257065", showocean=True, oceancolor="#102F48",
-                    showcountries=True, countrycolor="#71A39A", coastlinecolor="#71A39A",
-                    bgcolor="#071C29", lataxis_showgrid=True, lonaxis_showgrid=True)
-    fig.update_layout(height=420, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="#071C29")
-    # User-activated navigation carries no data; the ordinary Streamlit button is the accessible fallback.
-    script = """
-    const g=document.getElementById('{plot_id}');
-    let lon=70, stopped=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    g.on('plotly_click',()=>{stopped=true; window.open('?view=bangladesh','_top');});
-    g.addEventListener('pointerdown',()=>stopped=true);
-    const timer=setInterval(()=>{if(!stopped){lon+=0.25;Plotly.relayout(g,{'geo.projection.rotation.lon':lon});}},150);
-    window.addEventListener('pagehide',()=>clearInterval(timer));
-    """
-    return fig.to_html(full_html=True, include_plotlyjs=True, post_script=script,
-                       config={"displayModeBar": False, "scrollZoom": False, "responsive": True})
+    """Self-contained canvas globe with vendored D3 and public-domain geography."""
+    import json
+    from pathlib import Path
+    folder = Path(__file__).resolve().parents[1] / "assets" / "maps"
+    countries = json.loads((folder / "countries.geojson").read_text(encoding="utf-8"))
+    bangladesh = next(f for f in countries["features"] if f["properties"].get("ADMIN") == "Bangladesh")
+    html = (folder / "globe.html").read_text(encoding="utf-8")
+    replacements = {
+        "__D3_ARRAY__": (folder / "d3-array.min.js").read_text(encoding="utf-8"),
+        "__D3_GEO__": (folder / "d3-geo.min.js").read_text(encoding="utf-8"),
+        "__LAND__": (folder / "land.geojson").read_text(encoding="utf-8"),
+        "__BANGLADESH__": json.dumps(bangladesh),
+    }
+    for key, value in replacements.items():
+        html = html.replace(key, value)
+    return html
 
 
 def region_map(location, lat, lon):

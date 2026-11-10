@@ -17,11 +17,11 @@ No credentials or paid language-model service are required.
 
 ## Explore
 
-1. Start with the rotating globe; click the Bangladesh marker or **Explore Bangladesh**. Dragging stops rotation; reduced-motion preferences disable it.
+1. The introduction and large ECHO EARTH heading appear only on the landing page. Its locally rendered globe supports drag rotation, zoom, pause/resume, keyboard arrows and Focus Bangladesh. Click the pin or **Explore Bangladesh** to enter the separate workspace; **Back to Earth** returns home. Reduced-motion preferences disable automatic rotation.
 2. Choose a city marker or the accessible Location selector. The map centres on the selected location. Custom coordinates also work. These are point/grid selections, not district or basin averages.
 3. Switch **Surface temperature / Rainfall / Vegetation / Air temperature** in the sidebar.
 4. Choose dates and **Analyze**. At least 10 accepted years are required; prefer 20+.
-5. Inspect the chart, calculations, exclusions, uncertainty and provenance. Download the processed/source CSVs and analysis/source JSON.
+5. Inspect the **Overview**, **Evidence**, **Data & downloads**, and **Ask Earth** tabs. The result distinguishes an estimated slope from a statistically detected monotonic trend. Download the processed/source CSVs and analysis/source JSON.
 
 Surface temperature is primary. It uses NASA POWER **TS (Earth Skin Temperature)** from MERRA-2 reanalysis: a coarse modelled surface temperature over land, not air temperature and not a high-resolution MODIS thermal image. Coastal cells can mix land and water.
 
@@ -54,7 +54,7 @@ The CSV layout example is only two illustrative rows; it shows formatting and ca
 
 Mann-Kendall uses tie-adjusted variance and continuity correction. Theil-Sen uses actual year spacing and reports a 95% slope interval. Annual averaging can hide seasonal changes and extremes. Neither serial dependence nor multiple comparisons is corrected. Statistical significance is not causation; findings are exploratory.
 
-Ask Earth recomputes the selected annual analysis for supported trend/slope questions and shows the function, sample count and source used. Completeness questions count actual valid observations. Unsupported questions are rejected.
+Ask Earth is a local, deterministic free-text data assistant with chat history. Ask about trends, significance, uncertainty, highest/lowest annual means, missing data, sources, methods, a specific year, two-year comparisons or a trend within a subperiod. Each numerical answer comes from the selected data or a new call to the analysis function. An expandable derivation explains the calculation and source. It rejects unobserved locations/variables, unsupported seasonal claims, causal attribution and forecasts. It is not a general-purpose language model and requires no paid API. Conversations stay in the current session and reset when the selected analysis changes.
 
 **Synthetic demo** is explicit and labeled "Illustrative synthetic data-not NASA observations" throughout. It is never a source-error fallback.
 
@@ -67,7 +67,8 @@ Forecasting has been removed from the product interface. Future research may ass
 - `app.py`: entry point; `src/dashboard.py`: interface, cache and supported questions.
 - `src/data.py`: POWER access; `src/vegetation.py`: MODIS retrieval and QA.
 - `src/workflows.py`: variable definitions, upload validation and annual aggregation.
-- `src/trends.py`: statistics; `src/maps.py`: globe and location map.
+- `src/trends.py`: statistics; `src/maps.py`: globe and location map; `src/chat.py`: grounded question routing/calculations; `src/theme.py`: accessible interface styling.
+- `assets/maps/`: public-domain Natural Earth geometry, pinned D3 libraries and licenses, and the interactive globe client. Regeneration URLs and hashes are included.
 - `src/preprocessing.py` and `src/questions.py`: retained first-release compatibility helpers.
 - `tests/`: offline science, upload and app-interaction tests.
 - `scripts/smoke_variables.py`: live source verification; writes ignored `data/cache/` evidence.
@@ -77,4 +78,4 @@ Forecasting has been removed from the product interface. Future research may ass
 .\.venv\Scripts\python.exe -X utf8 scripts/smoke_variables.py
 ```
 
-Globe boundaries and OpenStreetMap tiles require browser internet access. If Arrow's native DLL is blocked, data tables fall back to accessible escaped HTML without weakening Windows security. The original proposal and first-release documentation/code are preserved in `docs/`. Secrets, virtual environments and local data caches are ignored by Git.
+The globe runs entirely from bundled geometry and JavaScript; no browser-side CDN or WebGL is needed. The workspace's OpenStreetMap tiles still require browser internet access. If Arrow's native DLL is blocked, data tables fall back to accessible escaped HTML without weakening Windows security. The original proposal and first-release documentation/code are preserved in `docs/`. Secrets, virtual environments and local data caches are ignored by Git.

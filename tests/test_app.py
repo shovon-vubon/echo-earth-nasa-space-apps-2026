@@ -6,8 +6,11 @@ from streamlit.testing.v1 import AppTest
 APP = str(Path(__file__).resolve().parents[1] / "app.py")
 
 
-def launch():
-    return AppTest.from_file(APP, default_timeout=30).run()
+def launch(workspace=True):
+    app = AppTest.from_file(APP, default_timeout=30)
+    if workspace:
+        app.query_params["view"] = "explore"
+    return app.run()
 
 
 def click_analyze(app):
@@ -20,11 +23,12 @@ def test_demo_switching_and_ask():
     assert not app.exception
     app.sidebar.radio[1].set_value("Synthetic demo").run()
     click_analyze(app)
-    assert not app.exception and len(app.metric)==3
-    app.text_input[0].set_value("Will it flood tomorrow?").run()
-    assert any("Unsupported" in e.value for e in app.info)
+    assert not app.exception and len(app.metric)==4
+    app.chat_input[0].set_value("Will it flood tomorrow?").run()
+    assert any("cannot predict" in e.value for e in app.markdown)
     app.sidebar.radio[0].set_value("Rainfall / precipitation").run()
     assert not app.metric
+    assert not app.chat_message
     click_analyze(app)
     assert not app.exception
     assert any("mm/day/year" in m.value for m in app.markdown)
@@ -60,16 +64,23 @@ def test_upload_wizard_end_to_end():
         next(t for t in app.text_input if t.label=="Location represented by this file").set_value("Sylhet station")
         next(c for c in app.checkbox if c.label.startswith("I confirm")).check()
         click_analyze(app)
-        assert not app.exception and len(app.metric)==3
-        assert any("User-provided data" in m.value for m in app.markdown)
-        assert any("Sylhet station" in s.value for s in app.subheader)
+        assert not app.exception and len(app.metric)==4
+        assert any("User-provided data" in m.value for m in app.caption)
+        assert any("Sylhet station" in s.value for s in app.caption)
 
 
 def test_globe_navigation():
-    app=launch()
+    app=launch(workspace=False)
+    assert not app.sidebar.radio
+    assert any(t.value == "ECHO EARTH" for t in app.title)
     next(b for b in app.button if b.label=="Explore Bangladesh").click().run()
     assert not app.exception
-    assert app.query_params["view"]=="bangladesh"
+    assert app.query_params["view"]=="explore"
+    assert not app.title
+    assert len(app.sidebar.radio) == 2
+    next(b for b in app.button if b.label.endswith("Back to Earth")).click().run()
+    assert any(t.value == "ECHO EARTH" for t in app.title)
+    assert not app.sidebar.radio
 
 
 def test_nasa_surface_temperature_uses_real_retrieval_function(monkeypatch):
@@ -98,7 +109,7 @@ def test_nasa_surface_temperature_uses_real_retrieval_function(monkeypatch):
     app.sidebar.selectbox[0].set_value("Sylhet").run()
     click_analyze(app)
     assert not app.exception and not app.error
-    assert len(app.metric) == 3
+    assert len(app.metric) == 4
     assert calls[0]["parameters"] == "TS"
     assert calls[0]["latitude"] == 24.8949
     assert calls[0]["longitude"] == 91.8687

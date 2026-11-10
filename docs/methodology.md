@@ -8,7 +8,7 @@ CSV uploads support daily, monthly and annual series with explicit units and dat
 
 MOD13Q1 composites occur at day-of-year 1,17,…,353 (23 per year). Use one pixel with reliability rank 0 or 1, scale valid NDVI and leave excluded observations missing. Require at least 18 composites and at least three in each calendar quarter. Annual NDVI is the equally weighted average of accepted composites, not a duration-weighted daily estimate. These are project screening choices, not official MODIS acceptance thresholds. Marginal-quality observations and residual seasonal/cloud sampling bias remain limitations. Partial requested calendar years are excluded for every cadence.
 
-Ask Earth invokes the same `analyze` function for supported trend/slope questions; completeness and source answers use the selected input and provenance. It does not generate causal explanations or forecasts.
+Ask Earth invokes the same `analyze` function for supported trend/slope questions, including a requested subperiod with ten or more accepted years. Endpoint comparisons subtract actual accepted annual means, not fitted values; comparisons are explicitly distinguished from a trend. Extrema use accepted annual means (all ties retained), not daily extremes. Completeness and source answers use selected input and provenance. It rejects absent or excluded years, unobserved variables/locations, seasonal-trend claims, causal explanations and forecasts. It is deterministic, not a general-purpose LLM. Chat resets when the analysis selection changes, and every answer records its derivation.
 
 ## Core daily method (retained from version 1.0)
 

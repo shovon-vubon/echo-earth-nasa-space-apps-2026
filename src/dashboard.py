@@ -11,6 +11,8 @@ from src.trends import analyze, explanation
 from src.workflows import VARIABLES, read_csv, prepare_upload, aggregate, upload_provenance
 from src.vegetation import retrieve_ndvi
 from src.maps import LOCATIONS, globe_html, region_map
+from src.theme import apply_theme
+from src.chat import respond
 
 
 @st.cache_data(ttl=86400, max_entries=32, show_spinner=False)
@@ -73,16 +75,42 @@ def upload_wizard(spec, variable):
                 resolution=resolution, confirmed=confirmed)
 
 
+def landing():
+    left, right = st.columns([1, 1.2], gap="large")
+    with left:
+        st.html('<div class="ee-kicker">EARTH SYSTEM TREND DETECTIVE</div>')
+        st.title("ECHO EARTH")
+        st.write("See what changed. Understand the evidence.")
+        st.caption("MIST-DREAMERS | Earth System Trend Detective | Historical analysis")
+        st.html('<p class="ee-intro">Explore the Earth through its changing surface temperature, rainfall and vegetation. Start in Bangladesh, choose a record, and follow the evidence from observations to a clear result.</p>')
+        if st.button("Explore Bangladesh", type="primary", width="stretch"):
+            st.query_params["view"] = "explore"
+            st.rerun()
+        st.caption("Public NASA data · Your own CSV files · No account or paid AI key")
+    with right:
+        if hasattr(st, "iframe"):
+            st.iframe(globe(), height=550, alt="Interactive rotating globe. Drag, zoom, pause or focus Bangladesh.")
+        else:
+            components.html(globe(), height=550)
+    a,b,c=st.columns(3)
+    a.markdown("**01 / Choose a record**\n\nA location, a variable, and a historical period.")
+    b.markdown("**02 / Inspect the change**\n\nTrend magnitude, uncertainty, gaps, and source data.")
+    c.markdown("**03 / Ask the evidence**\n\nCompare years and explore what the result means.")
+    st.caption("Globe: locally bundled Natural Earth vector outlines. Country-wide and polygon analyses are future work.")
+
+
 def run():
     st.set_page_config(page_title="ECHO EARTH", page_icon="🌍", layout="wide")
-    st.title("ECHO EARTH")
-    st.write("See what changed. Understand the evidence.")
-    st.caption("MIST-DREAMERS | Earth System Trend Detective | Historical analysis")
-    if st.session_state.pop("hide_globe_next", False):
-        st.session_state.show_globe = False
+    apply_theme()
+    if st.query_params.get("view") not in {"explore", "bangladesh"}:
+        landing()
+        return
     if "pending_location" in st.session_state:
         st.session_state.location = st.session_state.pop("pending_location")
     with st.sidebar:
+        if st.button("← Back to Earth"):
+            st.query_params.clear()
+            st.rerun()
         st.header("Explore a trend")
         variable = st.radio("Trend type", list(VARIABLES), key="variable")
         spec = VARIABLES[variable]
@@ -97,28 +125,13 @@ def run():
         start = st.date_input("Start date", date(2001,1,1), min_value=minimum, max_value=date(last_year,12,31))
         end = st.date_input("End date", date(2024,12,31), min_value=minimum, max_value=date(last_year,12,31))
         st.caption("At least 10 full years required; prefer 20 or more. Requests cached for 24 hours.")
-        show_globe = st.checkbox("Show globe introduction", value=st.query_params.get("view") != "bangladesh", key="show_globe")
-    if show_globe:
-        left, right = st.columns([3,2])
-        with left:
-            if hasattr(st, "iframe"):
-                st.iframe(globe(), height=430, alt="Rotating Earth globe with Bangladesh marker")
-            else:
-                components.html(globe(), height=430)
-        with right:
-            st.subheader("One planet. Many changing patterns.")
-            st.write("Start in Bangladesh. Switch between surface temperature, precipitation and vegetation, then inspect the evidence behind each trend.")
-            st.write("Click the Bangladesh marker to explore. Drag to stop rotation. Reduced-motion preferences are respected.")
-            if st.button("Explore Bangladesh", type="primary"):
-                st.query_params["view"] = "bangladesh"
-                st.session_state["hide_globe_next"] = True
-                st.rerun()
-            st.caption("Globe boundaries need internet access. The location selector also works without the globe. Global country drill-down and polygon averages are future work.")
+    st.header("Trend explorer")
     st.subheader(variable)
+    st.caption(f"{location} · {abs(lat):.4f}° {'N' if lat >= 0 else 'S'}, {abs(lon):.4f}° {'E' if lon >= 0 else 'W'} · {start:%d %b %Y} – {end:%d %b %Y}")
     st.write(spec["note"])
     if spec["code"] == "NDVI" and mode == "NASA online":
         st.info("MODIS retrieval is slower than POWER. Download attempts have a two-minute request budget; successful batches are retained. If paused, click Analyze again to continue from cache. NASA outages produce an error, not a partial trend. You can also upload quality-screened NDVI CSV data.")
-    with st.expander("Bangladesh location map", expanded=st.query_params.get("view") == "bangladesh"):
+    with st.expander("Choose a point on the Bangladesh map", expanded=False):
         event = st.plotly_chart(region_map(location,lat,lon), key=f"map_{location}_{lat}_{lon}", on_select="rerun", width="stretch")
         points = event.selection.points
         if points and points[0].get("customdata") in LOCATIONS and points[0]["customdata"] != location:
@@ -135,8 +148,10 @@ def run():
         {k: hashlib.sha256(v).hexdigest() if k == "content" else v for k,v in settings.items() if k != "frame"} if settings else None))
     if st.session_state.get("signature") != signature:
         st.session_state.pop("analysis",None)
+        st.session_state.pop("conversation",None)
     if st.button("Analyze",type="primary",width="stretch"):
         st.session_state.pop("analysis",None)
+        st.session_state.pop("conversation",None)
         try:
             if start > end:
                 raise DataError("Start date must be on or before end date.")
@@ -181,7 +196,7 @@ def run():
     if mode == "Synthetic demo":
         st.warning(DEMO_LABEL + ". Values do not describe the selected location.")
     if "analysis" not in st.session_state:
-        st.info("Choose your variable, location, dates and source, then Analyze.")
+        st.html('<div class="ee-empty"><strong>Your evidence starts here.</strong><br>Choose a record in the sidebar and select Analyze. Your chart, uncertainty, downloads and Ask Earth conversation will appear together.</div>')
     else:
         render_result(st.session_state.analysis,variable,spec,mode,start,end)
     st.caption("Historical trends only. Mirpur waterlogging is storytelling context, not a demonstrated consequence of these trends. Forecasting is future research, outside this app.")
@@ -190,63 +205,90 @@ def run():
 def render_result(bundle,variable,spec,mode,start,end):
     annual,processed,provenance,raw,result,problem,original = bundle
     label,units = provenance["source"],spec["units"]
-    st.subheader(f"{provenance['location']} | {variable} | {start.year}–{end.year}")
-    st.write(f"**Source: {label}**")
     completeness = float(processed.value.notna().mean()) if len(processed) else 0
-    a,b,c = st.columns(3)
-    a.metric("Valid observations",f"{processed.value.count():,} / {len(processed):,}")
-    b.metric("Completeness",f"{completeness:.1%}")
-    c.metric("Accepted years",str(int(annual.included.sum())))
+    st.divider()
+    st.caption(f"{provenance['location']} | {variable} | requested {start.year}-{end.year} | {label}")
     if result:
-        st.write(explanation(result,variable.lower(),units))
+        heading = ("Increasing" if result.slope > 0 else "Decreasing") + " trend detected" if result.p < .05 else "No clear monotonic trend detected"
+        st.subheader(heading)
+        st.caption("At the unadjusted 0.05 threshold. Read the assumptions before interpreting significance.")
     else:
         st.warning(problem)
-    accepted,rejected = annual.loc[annual.included],annual.loc[~annual.included]
-    fig = go.Figure(go.Scatter(x=annual.year,y=annual.annual_mean.where(annual.included),mode="lines+markers",
-        name="Accepted annual mean",line=dict(color="#148577"),connectgaps=False))
-    fig.add_trace(go.Scatter(x=rejected.year,y=rejected.annual_mean,mode="markers",name="Excluded (not fitted)",marker=dict(symbol="x",color="#BC6427",size=11)))
-    if result:
-        fig.add_trace(go.Scatter(x=accepted.year,y=result.intercept+result.slope*accepted.year,name="Theil–Sen fit",line=dict(dash="dash",color="#5263B1")))
-    fig.update_layout(title=f"{variable}: annual mean | {label}",xaxis_title="Year",yaxis_title=units,legend=dict(orientation="h"))
-    st.plotly_chart(fig,width="stretch")
-    with st.expander("Show the calculation and evidence",expanded=True):
+    a,b,c,d=st.columns(4)
+    a.metric("Estimated change / decade",f"{result.slope*10:+.3f} {units}" if result else "Not tested")
+    b.metric("Mann-Kendall p-value",f"{result.p:.4g}" if result else "Not tested")
+    c.metric("Accepted years",str(int(annual.included.sum())))
+    d.metric("Observation completeness",f"{completeness:.1%}")
+    st.caption(f"{processed.value.count():,} valid / {len(processed):,} expected observations. A fitted trend is not a forecast.")
+    overview,evidence,data,chat=st.tabs(["Overview","Evidence","Data & downloads","Ask Earth"])
+    with overview:
+        accepted,rejected=annual.loc[annual.included],annual.loc[~annual.included]
+        fig=go.Figure(go.Scatter(x=annual.year.tolist(),y=annual.annual_mean.where(annual.included).tolist(),mode="lines+markers",
+            name="Accepted annual mean",line=dict(color="#2ca892",width=2.5),marker=dict(size=7),connectgaps=False))
+        fig.add_trace(go.Scatter(x=rejected.year.tolist(),y=rejected.annual_mean.tolist(),mode="markers",name="Excluded (not fitted)",marker=dict(symbol="x",color="#d59143",size=10)))
+        if result:
+            fig.add_trace(go.Scatter(x=accepted.year.tolist(),y=(result.intercept+result.slope*accepted.year).tolist(),name="Theil-Sen fit",line=dict(dash="dash",color="#8b92dd",width=2)))
+        fig.update_layout(xaxis_title="Calendar year",yaxis_title=f"Annual mean ({units})",legend=dict(orientation="h",y=-.2),
+            height=420,margin=dict(l=20,r=20,t=20,b=40),hovermode="x unified")
+        st.plotly_chart(fig,width="stretch")
+        st.caption(label + ". Values are annual means; excluded years are never fitted.")
+        if result:
+            st.write(explanation(result,variable.lower(),units))
+            st.info(f"95% slope interval: {result.low:+.5f} to {result.high:+.5f} {units}/year. This describes slope uncertainty under independence assumptions, not future values.")
+    with evidence:
+        st.subheader("Follow the calculation")
         st.write(f"Input cadence: {provenance['frequency']}. Annual arithmetic means; no interpolation or imputation.")
         st.write("Daily: >=90% valid days/year and >=80%/month. Monthly: all 12 means, equal weights. Annual: one supplied mean; within-year completeness unknown. MODIS: >=18/23 composites and >=3/quarter, equal weights. Partial requested years excluded.")
         st.code("S = sum(sign(value[j] - value[i])) for i < j\nslope = median((value[j] - value[i]) / (year[j] - year[i]))\np = 2 * normal_survival(abs(continuity_corrected_Z))")
         if result:
             st.write(f"{result.n} accepted years: S={result.s}, Z={result.z:.4f}, p={result.p:.6g}; 95% slope interval [{result.low:.5f}, {result.high:.5f}] {units}/year.")
-            st.caption(f"Actual fitted interval: {accepted.year.min()}–{accepted.year.max()}. Calendar-year gaps preserved. Detrended lag-1 correlation: {result.lag1}; adjacent-year pairs: {result.lag_pairs}.")
+            st.caption(f"Fitted years: {accepted.year.min()}-{accepted.year.max()}. Calendar gaps preserved. Detrended lag-1 correlation: {result.lag1 if result.lag1 is not None else 'undefined'}; adjacent-year pairs: {result.lag_pairs}.")
             if result.n < 20:
                 st.warning("Fewer than 20 accepted years: short record for long-term interpretation.")
         st.warning("Exploratory inference: serial correlation and repeated comparisons are not corrected. Annual averaging hides seasonal changes and extremes. Missingness and dataset uncertainty can bias results. Significance is not causation.")
-        st.write("Mann–Kendall uses tie-adjusted variance and continuity correction; Theil–Sen confidence limits come from SciPy. A slope interval is not a forecast interval. Uploaded source and quality declarations are not independently verified.")
-        st.json(provenance)
-    with st.expander("Inspect and download data",expanded=True):
+        st.write("Mann-Kendall uses tie-adjusted variance and continuity correction. Theil-Sen confidence limits come from SciPy. Uploaded source and quality declarations are not independently verified.")
+        with st.expander("Full source and processing record"):
+            st.json(provenance)
+    with data:
         st.caption(label)
         show_table(annual)
-        year = st.selectbox("Observation preview year",sorted(processed.date.dt.year.unique()))
-        show_table(processed.loc[processed.date.dt.year == year])
-        prefix = "synthetic" if mode == "Synthetic demo" else "uploaded" if mode == "Upload CSV" else "nasa"
+        year=st.selectbox("Observation preview year",sorted(processed.date.dt.year.unique()))
+        show_table(processed.loc[processed.date.dt.year==year])
+        prefix="synthetic" if mode=="Synthetic demo" else "uploaded" if mode=="Upload CSV" else "nasa"
         for name,frame in [("annual",annual),("processed",processed),("source_values",original)]:
-            export = frame.assign(source=label,variable=variable,units=units,location=provenance["location"])
+            export=frame.assign(source=label,variable=variable,units=units,location=provenance["location"])
             st.download_button(f"Download {name.replace('_',' ')} CSV",export.to_csv(index=False).encode(),f"{prefix}_{spec['code']}_{name}.csv","text/csv")
-        st.download_button("Download analysis and provenance",json_bytes(dict(provenance=provenance,
-            result=result.to_dict() if result else None,completeness=completeness,
-            limitations="Unadjusted dependence and multiple comparisons; not causal or predictive")),f"{prefix}_analysis.json","application/json")
+        st.download_button("Download analysis and provenance",json_bytes(dict(provenance=provenance,result=result.to_dict() if result else None,
+            completeness=completeness,limitations="Unadjusted dependence and multiple comparisons; not causal or predictive")),f"{prefix}_analysis.json","application/json")
         if raw:
             st.download_button("Download original source response",json_bytes(raw),f"{prefix}_source.json","application/json")
-    if result:
-        st.subheader("Ask Earth")
-        st.caption("Supported: What is the trend? | What is the slope? | How complete is the data? | What is the source?")
-        question = st.text_input("Ask about this analysis",placeholder="What is the trend?")
-        q = question.strip().lower().rstrip("?")
-        if q in {"what is the trend","what is the slope"}:
-            computed = analyze(annual)
-            st.write(explanation(computed,variable.lower(),units))
-            st.caption(f"Derived by analyze(accepted annual series): {computed.n} years, Mann–Kendall + Theil–Sen. Source: {label}.")
-        elif q == "how complete is the data":
-            st.write(f"{processed.value.count()} valid / {len(processed)} expected = {completeness:.1%}. Exclusion reasons appear in the table.")
-        elif q == "what is the source":
-            st.json(provenance)
-        elif question:
-            st.info("Unsupported question. Ask Earth only answers the four listed questions from this analysis; it cannot infer causes or predict future conditions.")
+    with chat:
+        render_chat(annual,processed,provenance)
+
+
+def render_chat(annual,processed,provenance):
+    st.subheader("Ask Earth")
+    st.write("Ask in your own words about this record: changes, year comparisons, highest or lowest years, uncertainty, gaps, sources, or methods.")
+    st.caption("A local data assistant, not a general-purpose AI. It computes supported answers and explains its limits. Nothing in this conversation is sent to an external AI service.")
+    conversation=st.session_state.setdefault("conversation",[])
+    suggestions=st.columns(3)
+    quick=None
+    for col,label in zip(suggestions,["Explain this change","Which year was highest?","How certain is the trend?"]):
+        if col.button(label,key="ask_"+label):
+            quick=label
+    def add_answer(prompt):
+        answer=respond(prompt,annual,processed,provenance)
+        conversation.extend([dict(role="user",text=prompt),dict(role="assistant",text=answer.text,derivation=answer.derivation)])
+        del conversation[:-20]
+    if quick:
+        add_answer(quick)
+    for item in conversation:
+        with st.chat_message(item["role"]):
+            st.write(item["text"])
+            if item.get("derivation"):
+                with st.expander("How this answer was derived"):
+                    st.text(item["derivation"])
+    prompt=st.chat_input("Ask about the selected change...",key="earth_chat",max_chars=1000)
+    if prompt:
+        add_answer(prompt)
+        st.rerun()

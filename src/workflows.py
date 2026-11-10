@@ -74,6 +74,14 @@ def aggregate(frame, start, end, frequency="Daily"):
     start, end = pd.Timestamp(start), pd.Timestamp(end)
     if start > end:
         raise DataError("Start date must be on or before end date.")
+    if frequency not in {"Daily", "Monthly", "Annual", "16-day"}:
+        raise DataError("Unsupported observation frequency.")
+    frame = frame.copy()
+    frame["date"] = pd.to_datetime(frame["date"], errors="raise")
+    if frame.date.duplicated().any():
+        raise DataError("Duplicate timestamps cannot be aggregated without an explicit rule.")
+    frame["value"] = pd.to_numeric(frame["value"], errors="coerce")
+    frame.loc[~np.isfinite(frame.value), "value"] = np.nan
     if frequency == "Daily":
         expected = pd.date_range(start, end, freq="D")
     elif frequency == "Monthly":
