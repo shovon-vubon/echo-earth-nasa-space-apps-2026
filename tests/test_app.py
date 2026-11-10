@@ -70,3 +70,35 @@ def test_globe_navigation():
     next(b for b in app.button if b.label=="Explore Bangladesh").click().run()
     assert not app.exception
     assert app.query_params["view"]=="bangladesh"
+
+
+def test_nasa_surface_temperature_uses_real_retrieval_function(monkeypatch):
+    """Mock only HTTP, so dashboard/retrieval signature and TS mapping are exercised."""
+    import json
+    import pandas as pd
+    import requests
+    st.cache_data.clear()
+    payload = {
+        "header": {"fill_value": -999, "sources": ["MERRA2"]},
+        "parameters": {"TS": {"units": "C", "longname": "Earth Skin Temperature"}},
+        "properties": {"parameter": {"TS": {
+            d.strftime("%Y%m%d"): 25 + (d.year - 2001) * .02
+            for d in pd.date_range("2001-01-01", "2024-12-31")}}},
+    }
+    calls = []
+    def http_get(url, params, timeout):
+        calls.append(params)
+        response = requests.Response()
+        response.status_code = 200
+        response.url = requests.Request("GET", url, params=params).prepare().url
+        response._content = json.dumps(payload).encode()
+        return response
+    monkeypatch.setattr(requests, "get", http_get)
+    app = launch()
+    app.sidebar.selectbox[0].set_value("Sylhet").run()
+    click_analyze(app)
+    assert not app.exception and not app.error
+    assert len(app.metric) == 3
+    assert calls[0]["parameters"] == "TS"
+    assert calls[0]["latitude"] == 24.8949
+    assert calls[0]["longitude"] == 91.8687
