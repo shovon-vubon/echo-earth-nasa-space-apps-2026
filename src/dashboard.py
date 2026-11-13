@@ -16,7 +16,7 @@ from src.chat import respond
 
 
 @st.cache_data(ttl=86400, max_entries=32, show_spinner=False)
-def nasa_data(lat, lon, start, end, code):
+def nasa_data(lat, lon, start, end, code, api_key="kDgGKpwj6dqqLQQpTc97W68cgC87NR7KkrMLBPwg"):
     if code == "NDVI":
         progress = st.progress(0., text="Loading MODIS metadata and quality-screened composites…")
         try:
@@ -24,7 +24,7 @@ def nasa_data(lat, lon, start, end, code):
                 progress=lambda fraction: progress.progress(fraction, text=f"MODIS composites retrieved: {fraction:.0%}"))
         finally:
             progress.empty()
-    frame, provenance, raw = retrieve(lat, lon, start, end, code)
+    frame, provenance, raw = retrieve(lat, lon, start, end, code, api_key=api_key)
     return frame.rename(columns={"temperature_c": "value"}), provenance, raw
 
 
@@ -124,6 +124,8 @@ def run():
         minimum = date(2000,1,1) if spec["code"] == "NDVI" and mode == "NASA online" else date(1981,1,1) if mode == "NASA online" else date(1900,1,1)
         start = st.date_input("Start date", date(2001,1,1), min_value=minimum, max_value=date(last_year,12,31))
         end = st.date_input("End date", date(2024,12,31), min_value=minimum, max_value=date(last_year,12,31))
+        st.text_input("NASA API Key", value="kDgGKpwj6dqqLQQpTc97W68cgC87NR7KkrMLBPwg", key="nasa_api_key", type="password")
+        st.caption("✓ Active NASA Open Data API Key (api.nasa.gov)")
         st.caption("At least 10 full years required; prefer 20 or more. Requests cached for 24 hours.")
     st.header("Trend explorer")
     st.subheader(variable)
@@ -158,7 +160,8 @@ def run():
             with st.spinner("Retrieving and screening data. Multi-year MODIS requests can take several minutes…"):
                 frequency = "16-day" if spec["code"] == "NDVI" and mode == "NASA online" else "Daily"
                 if mode == "NASA online":
-                    frame, provenance, raw = nasa_data(lat,lon,start,end,spec["code"])
+                    user_key = st.session_state.get("nasa_api_key", "kDgGKpwj6dqqLQQpTc97W68cgC87NR7KkrMLBPwg")
+                    frame, provenance, raw = nasa_data(lat, lon, start, end, spec["code"], api_key=user_key)
                 elif mode == "Synthetic demo":
                     frame,provenance,raw = synthetic(start,end)
                     frame = frame.rename(columns={"temperature_c":"value"})

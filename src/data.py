@@ -11,6 +11,7 @@ ENDPOINT = "https://power.larc.nasa.gov/api/temporal/daily/point"
 NASA_LABEL = "NASA POWER / MERRA-2 reanalysis"
 DEMO_LABEL = "Illustrative synthetic data—not NASA observations"
 DOCS = "https://power.larc.nasa.gov/docs/services/api/temporal/daily/"
+DEFAULT_NASA_API_KEY = "kDgGKpwj6dqqLQQpTc97W68cgC87NR7KkrMLBPwg"
 
 
 class DataError(ValueError):
@@ -39,7 +40,7 @@ def parse_power(payload, start, end, parameter="T2M"):
         raise DataError(f"NASA response could not be validated: {exc}") from exc
 
 
-def retrieve(latitude, longitude, start, end, parameter="T2M"):
+def retrieve(latitude, longitude, start, end, parameter="T2M", api_key=DEFAULT_NASA_API_KEY):
     if parameter not in {"T2M", "TS", "PRECTOTCORR"}:
         raise DataError("Unsupported POWER parameter.")
     if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
@@ -50,8 +51,12 @@ def retrieve(latitude, longitude, start, end, parameter="T2M"):
     params = dict(parameters=parameter, community="AG", latitude=latitude,
                   longitude=longitude, start=start.strftime("%Y%m%d"),
                   end=end.strftime("%Y%m%d"), format="JSON", **{"time-standard": "UTC"})
+    headers = {}
+    if api_key:
+        params["api_key"] = api_key
+        headers["X-Api-Key"] = api_key
     try:
-        response = requests.get(ENDPOINT, params=params, timeout=(10, 90))
+        response = requests.get(ENDPOINT, params=params, headers=headers, timeout=(10, 90))
         response.raise_for_status()
         payload = response.json()
     except (requests.RequestException, ValueError) as exc:
@@ -60,6 +65,7 @@ def retrieve(latitude, longitude, start, end, parameter="T2M"):
     provenance = {
         "source": NASA_LABEL, "variable": parameter + ": " + payload["parameters"][parameter]["longname"],
         "units": payload["parameters"][parameter]["units"], "request_url": response.url,
+        "api_key_used": (api_key[:8] + "..." + api_key[-4:]) if api_key else "None",
         "retrieved_utc": datetime.now(timezone.utc).isoformat(),
         "response_sha256": hashlib.sha256(response.content).hexdigest(),
         "latitude": latitude, "longitude": longitude,
